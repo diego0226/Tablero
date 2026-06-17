@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tablero — SaaS de citas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F6F5F1;--surface:#FFFFFF;--ink:#1C1C1A;--muted:#6B6B66;--faint:#9C9B95;
+    --line:#E7E5DE;--emerald:#1D7A5F;--coral:#E07A5F;--amber:#C68A1E;
+    --sans:'Inter',system-ui,sans-serif;--serif:'Fraunces',Georgia,serif;
+    /* épicas */
+    --epA:#6D5BD0;--epA-s:#ECE9FA;
+    --epB:#1D7A5F;--epB-s:#E4F1EC;
+    --epC:#E07A5F;--epC-s:#FBEBE4;
+    --epD:#3B7CB0;--epD-s:#E6F0F8;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--sans);background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.5}
+
+  header{background:var(--surface);border-bottom:1px solid var(--line);padding:18px 28px;position:sticky;top:0;z-index:20}
+  .head-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px}
+  .title-wrap{display:flex;align-items:center;gap:12px}
+  .mark{width:38px;height:38px;border-radius:10px;background:var(--emerald);color:#fff;display:grid;place-items:center;font-family:var(--serif);font-weight:600;font-size:18px}
+  h1{font-family:var(--serif);font-size:22px;font-weight:600;letter-spacing:-.02em}
+  .sub{font-size:12.5px;color:var(--faint)}
+  .actions{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+  .btn{font-family:var(--sans);font-size:13px;font-weight:500;padding:9px 14px;border-radius:9px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:.15s}
+  .btn svg{width:15px;height:15px;stroke-width:2;fill:none;stroke:currentColor}
+  .btn:hover{border-color:var(--faint)}
+  .btn-primary{background:var(--emerald);color:#fff;border-color:var(--emerald)}
+  .btn-primary:hover{background:#176349}
+
+  /* progreso + filtros */
+  .strip{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;margin-top:16px}
+  .progress-wrap{flex:1;min-width:240px}
+  .progress-top{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:6px;color:var(--muted)}
+  .progress-top b{color:var(--ink);font-weight:600}
+  .pbar{height:8px;background:var(--bg);border-radius:20px;overflow:hidden}
+  .pbar i{display:block;height:100%;background:var(--emerald);border-radius:20px;transition:width .4s}
+  .filters{display:flex;gap:6px;flex-wrap:wrap}
+  .chip{font-size:12px;font-weight:500;padding:6px 12px;border-radius:20px;border:1px solid var(--line);background:var(--surface);color:var(--muted);cursor:pointer;transition:.15s}
+  .chip:hover{border-color:var(--faint)}
+  .chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+  /* board */
+  .board{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;padding:22px 28px 40px;align-items:start}
+  .col{background:rgba(0,0,0,.015);border:1px solid var(--line);border-radius:14px;padding:12px;min-height:120px}
+  .col-head{display:flex;align-items:center;justify-content:space-between;padding:4px 6px 12px}
+  .col-name{font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px}
+  .dot{width:9px;height:9px;border-radius:50%}
+  .count{font-size:12px;color:var(--faint);background:var(--bg);padding:1px 9px;border-radius:20px;font-weight:600}
+  .col.drag-over{background:var(--epB-s);border-color:var(--emerald);border-style:dashed}
+  .col-list{display:flex;flex-direction:column;gap:9px;min-height:40px}
+
+  /* card */
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:13px;cursor:grab;transition:box-shadow .15s,transform .1s}
+  .card:hover{box-shadow:0 2px 10px rgba(0,0,0,.06)}
+  .card.dragging{opacity:.4;cursor:grabbing}
+  .card-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .ep-tag{font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:6px;letter-spacing:.02em}
+  .prio{display:flex;align-items:center;gap:4px;font-size:10.5px;font-weight:600;color:var(--faint)}
+  .prio .pd{width:7px;height:7px;border-radius:50%}
+  .p-alta{background:#D64545}.p-media{background:var(--amber)}.p-baja{background:#9C9B95}
+  .card-title{font-size:13.5px;font-weight:500;line-height:1.4}
+  .card-desc{font-size:12px;color:var(--muted);line-height:1.45;margin-top:6px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .card-foot{display:flex;justify-content:space-between;align-items:center;margin-top:11px}
+  .card-foot .left{display:flex;align-items:center;gap:8px}
+  .code{font-size:11px;color:var(--faint);font-weight:600;font-variant-numeric:tabular-nums}
+  .subbadge{font-size:10.5px;font-weight:600;color:var(--muted);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:1px 7px;display:inline-flex;align-items:center;gap:4px}
+  .subbadge.full{color:var(--emerald);border-color:var(--epB-s);background:var(--epB-s)}
+  .assignee{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:10px;font-weight:600;color:#fff}
+  .assignee.none{background:var(--bg);color:var(--faint);border:1px dashed var(--line)}
+
+  /* modal */
+  .overlay{position:fixed;inset:0;background:rgba(20,20,18,.45);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
+  .overlay.show{display:flex}
+  .modal{background:var(--surface);border-radius:16px;width:100%;max-width:480px;padding:24px;max-height:90vh;overflow:auto}
+  .modal h3{font-family:var(--serif);font-size:19px;font-weight:600;margin-bottom:18px}
+  .field{margin-bottom:15px}
+  .field label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px}
+  .field input,.field select,.field textarea{width:100%;font-family:var(--sans);font-size:14px;padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink)}
+  .field textarea{resize:vertical;min-height:60px}
+  .field input:focus,.field select:focus,.field textarea:focus{outline:2px solid var(--emerald);outline-offset:0;border-color:transparent}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .modal-foot{display:flex;justify-content:space-between;align-items:center;margin-top:22px}
+  .link-danger{font-size:13px;color:#D64545;font-weight:500;background:none;border:none;cursor:pointer}
+  .modal-foot .right{display:flex;gap:9px}
+
+  /* subtareas */
+  .sub-count{font-weight:600;color:var(--faint);font-size:11px}
+  .sub-list{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+  .sub-item{display:flex;align-items:center;gap:9px;font-size:13.5px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+  .sub-item input[type=checkbox]{width:16px;height:16px;accent-color:var(--emerald);cursor:pointer;flex:none}
+  .sub-item span{flex:1;line-height:1.35}
+  .sub-item.done span{text-decoration:line-through;color:var(--faint)}
+  .sub-item button{background:none;border:none;color:var(--faint);cursor:pointer;font-size:18px;line-height:1;padding:0 2px}
+  .sub-item button:hover{color:#D64545}
+  .sub-add{display:flex;gap:8px}
+  .sub-add input{flex:1;font-family:var(--sans);font-size:13.5px;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink)}
+
+  .empty{font-size:12px;color:var(--faint);text-align:center;padding:18px 0;font-style:italic}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;padding:0 28px 24px;font-size:12px;color:var(--muted)}
+  .legend span{display:flex;align-items:center;gap:6px}
+
+  input[type=file]{display:none}
+
+  @media(max-width:900px){.board{grid-template-columns:1fr 1fr}}
+  @media(max-width:560px){.board{grid-template-columns:1fr}.row2{grid-template-columns:1fr}}
+  @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+  .chip:focus-visible,.btn:focus-visible,.card:focus-visible{outline:2px solid var(--emerald);outline-offset:2px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="head-row">
+    <div class="title-wrap">
+      <div class="mark">N</div>
+      <div>
+        <h1>SaaS de citas — tablero</h1>
+        <div class="sub">Estado real del proyecto (Navaja · reservas para barberías)</div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn" onclick="resetSeed()"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5"/></svg>Restablecer</button>
+      <button class="btn" onclick="exportJSON()"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>Exportar</button>
+      <label class="btn"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>Importar<input type="file" accept=".json" onchange="importJSON(event)"></label>
+      <button class="btn btn-primary" onclick="openNew()"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Nueva tarea</button>
+    </div>
+  </div>
+
+  <div class="strip">
+    <div class="progress-wrap">
+      <div class="progress-top"><span>Progreso del proyecto</span><span><b id="pdone">0</b> de <b id="ptotal">0</b> tareas hechas</span></div>
+      <div class="pbar"><i id="pbar" style="width:0%"></i></div>
+    </div>
+    <div class="filters" id="filters">
+      <button class="chip on" data-ep="all">Todas</button>
+      <button class="chip" data-ep="A">A · Admin SaaS</button>
+      <button class="chip" data-ep="B">B · Cliente</button>
+      <button class="chip" data-ep="C">C · Usuario final</button>
+      <button class="chip" data-ep="D">D · Infraestructura</button>
+    </div>
+  </div>
+</header>
+
+<div class="board" id="board"></div>
+
+<div class="legend">
+  <span><span class="dot" style="background:var(--epA)"></span> Épica A — Panel maestro (vos)</span>
+  <span><span class="dot" style="background:var(--epB)"></span> Épica B — Panel del cliente</span>
+  <span><span class="dot" style="background:var(--epC)"></span> Épica C — Usuario final</span>
+  <span><span class="dot" style="background:var(--epD)"></span> Épica D — Infraestructura</span>
+</div>
+
+<!-- MODAL -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h3 id="modal-title">Nueva tarea</h3>
+    <div class="field">
+      <label for="f-title">Título</label>
+      <input id="f-title" placeholder="¿Qué hay que construir?">
+    </div>
+    <div class="field">
+      <label for="f-desc">Descripción</label>
+      <textarea id="f-desc" placeholder="Contexto de la tarea…"></textarea>
+    </div>
+    <div class="field">
+      <label>Subtareas <span class="sub-count" id="sub-count"></span></label>
+      <div class="sub-list" id="sub-list"></div>
+      <div class="sub-add">
+        <input id="sub-input" placeholder="Añadir subtarea y pulsar Enter">
+        <button type="button" class="btn" onclick="addSubtask()">Añadir</button>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label for="f-epic">Épica</label>
+        <select id="f-epic">
+          <option value="A">A · Admin SaaS</option>
+          <option value="B">B · Cliente</option>
+          <option value="C">C · Usuario final</option>
+          <option value="D">D · Infraestructura</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="f-prio">Prioridad</label>
+        <select id="f-prio">
+          <option value="alta">Alta</option>
+          <option value="media" selected>Media</option>
+          <option value="baja">Baja</option>
+        </select>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label for="f-status">Columna</label>
+        <select id="f-status">
+          <option value="todo">Por hacer</option>
+          <option value="progress">En progreso</option>
+          <option value="review">En revisión</option>
+          <option value="done">Hecho</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="f-assignee">Responsable</label>
+        <input id="f-assignee" placeholder="Nombre o iniciales">
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="link-danger" id="del-btn" onclick="deleteTask()" style="visibility:hidden">Eliminar tarea</button>
+      <div class="right">
+        <button class="btn" onclick="closeModal()">Cancelar</button>
+        <button class="btn btn-primary" onclick="saveTask()">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const COLS = [
+    {id:'todo',     name:'Por hacer',    color:'#9C9B95'},
+    {id:'progress', name:'En progreso',  color:'#3B7CB0'},
+    {id:'review',   name:'En revisión',  color:'#C68A1E'},
+    {id:'done',     name:'Hecho',        color:'#1D7A5F'},
+  ];
+  const EPICS = {
+    A:{name:'Admin SaaS', c:'var(--epA)', s:'var(--epA-s)'},
+    B:{name:'Cliente',    c:'var(--epB)', s:'var(--epB-s)'},
+    C:{name:'Usuario',    c:'var(--epC)', s:'var(--epC-s)'},
+    D:{name:'Infra',      c:'var(--epD)', s:'var(--epD-s)'},
+  };
+  const EP_HEX = {A:'#6D5BD0',B:'#1D7A5F',C:'#E07A5F',D:'#3B7CB0'};
+
+  // Helper: marca todas las subtareas como hechas (para tareas ya implementadas).
+  const ok = (arr)=>arr.map(text=>({text,done:true}));
+  const pend = (arr)=>arr.map(text=>({text,done:false}));
+
+  /* ---- tareas precargadas (revisadas contra el código real del proyecto) ---- */
+  const SEED = [
+    // ───────────── Épica A · Panel maestro (super-admin) ─────────────
+    {id:'A1', ep:'A', prio:'alta', status:'done',
+      title:'Autenticación y roles de super-admin',
+      desc:'Login por email/contraseña con Supabase Auth; el rol de super-admin se decide por lista de correos.',
+      subtasks: ok(['Login con email y contraseña (Supabase Auth)','Detectar super-admin por SUPER_ADMIN_EMAILS','Proteger /admin con requireSuperAdmin','Cerrar sesión'])},
+    {id:'A2', ep:'A', prio:'alta', status:'done',
+      title:'Crear, activar y suspender barberías',
+      desc:'Alta, edición y baja de barberías (tenants) desde el panel maestro.',
+      subtasks: ok(['Crear barbería con slug y datos básicos','Activar / desactivar (is_active)','Editar datos de la barbería','Eliminar barbería (borrado en cascada)'])},
+    {id:'A3', ep:'A', prio:'alta', status:'done',
+      title:'Gestión de dueños y accesos por barbería',
+      desc:'Vincular cuentas dueñas a cada barbería y revocar su acceso (tabla tenant_users).',
+      subtasks: ok(['Invitar dueño por email (crea el usuario si no existe)','Definir o restablecer su contraseña','Listar dueños de la barbería','Revocar acceso de un dueño'])},
+    {id:'A4', ep:'A', prio:'media', status:'done',
+      title:'Personalización de marca por barbería',
+      desc:'Identidad visual de cada barbería para su web pública.',
+      subtasks: ok(['Subir logo','Elegir color de acento','Foto de portada del local','Restringir logo y Maps al super-admin'])},
+    {id:'A5', ep:'A', prio:'media', status:'done',
+      title:'Configuración avanzada de la barbería',
+      desc:'Ajustes técnicos por barbería desde "Configuración avanzada".',
+      subtasks: ok(['Slug / subdominio','Zona horaria','Duración del slot (slot_minutes)','Enlace de Google Maps y WhatsApp'])},
+    {id:'A6', ep:'A', prio:'media', status:'todo',
+      title:'Planes y límites de uso',
+      desc:'Definir planes con límites (citas/mes, staff, servicios) y aplicarlos por barbería.',
+      subtasks: pend(['Modelar planes y sus límites','Asignar un plan a cada barbería','Bloquear acciones al superar el límite','Avisar al acercarse al límite'])},
+    {id:'A7', ep:'A', prio:'alta', status:'todo',
+      title:'Facturación y suscripciones recurrentes',
+      desc:'Cobro recurrente de la suscripción del SaaS a cada barbería.',
+      subtasks: pend(['Integrar pasarela de suscripción (Stripe u otra)','Estados: activa, en mora, cancelada','Suspender barbería por impago','Historial de facturas descargables'])},
+    {id:'A8', ep:'A', prio:'media', status:'todo',
+      title:'Dashboard de métricas globales del SaaS',
+      desc:'Visión agregada del negocio para el operador del SaaS.',
+      subtasks: pend(['Barberías activas / inactivas','Citas e ingresos agregados','Altas y bajas en el tiempo','Ranking de barberías más activas'])},
+    {id:'A9', ep:'A', prio:'baja', status:'todo',
+      title:'Centro de ayuda y soporte',
+      desc:'Canal de soporte y documentación para las barberías.',
+      subtasks: pend(['Centro de ayuda / FAQ','Bandeja de tickets o contacto','Guías de primeros pasos'])},
+
+    // ───────────── Épica B · Panel del cliente (dueño) ─────────────
+    {id:'B1', ep:'B', prio:'media', status:'todo',
+      title:'Onboarding guiado al crear la barbería',
+      desc:'Asistente que guía al dueño en la puesta en marcha inicial.',
+      subtasks: pend(['Checklist de configuración inicial','Pasos: servicios → equipo → horario','Indicador de avance del onboarding','Atajo para compartir el enlace de reservas'])},
+    {id:'B2', ep:'B', prio:'alta', status:'done',
+      title:'Configurar horario semanal y cierres de día',
+      desc:'Horario por día de la semana y cierre temporal de días sin perder las franjas.',
+      subtasks: ok(['Franjas por día (working_hours)','Varias franjas por día (pausa/almuerzo)','Cerrar y reabrir un día (closed_weekdays)','Rechazar reservas en día cerrado (validación en servidor)'])},
+    {id:'B3', ep:'B', prio:'media', status:'todo',
+      title:'Feriados y cierres por fecha concreta',
+      desc:'Cerrar fechas específicas (feriados, vacaciones), no solo días de la semana.',
+      subtasks: pend(['Cerrar una fecha puntual','Rango de fechas (vacaciones)','Excluir esas fechas de la disponibilidad'])},
+    {id:'B4', ep:'B', prio:'alta', status:'done',
+      title:'Gestionar servicios (nombre, duración, precio)',
+      desc:'Catálogo de servicios de la barbería.',
+      subtasks: ok(['Crear / editar servicio','Duración en minutos','Precio (price_cents) con formato de moneda','Activar / desactivar servicio'])},
+    {id:'B5', ep:'B', prio:'alta', status:'done',
+      title:'Gestionar equipo / barberos',
+      desc:'Alta y gestión del equipo; la capacidad de la agenda depende de los barberos activos.',
+      subtasks: ok(['Crear / editar barbero','Foto del barbero','Activar / desactivar','Capacidad = nº de barberos activos'])},
+    {id:'B6', ep:'B', prio:'media', status:'todo',
+      title:'Roles y permisos del equipo',
+      desc:'Distinguir barbero de administrador y dar login propio a cada miembro.',
+      subtasks: pend(['Rol barbero vs. administrador','Login propio por barbero','Restringir vistas según rol','Que cada barbero vea solo su agenda'])},
+    {id:'B7', ep:'B', prio:'alta', status:'done',
+      title:'Agenda de citas (vista por día)',
+      desc:'Agenda diaria del panel con los indicadores del día.',
+      subtasks: ok(['Listar citas del día en la zona horaria del negocio','Ver servicio, barbero y cliente','KPIs del día (hoy, pendientes, clientes, ingresos)','Navegar entre días'])},
+    {id:'B8', ep:'B', prio:'media', status:'todo',
+      title:'Vistas de calendario semana y mes',
+      desc:'Ampliar la agenda con vistas de semana y mes (hoy solo hay vista por día).',
+      subtasks: pend(['Vista semanal','Vista mensual','Navegación entre periodos','Filtrar por barbero'])},
+    {id:'B9', ep:'B', prio:'alta', status:'done',
+      title:'Crear y gestionar citas desde el panel',
+      desc:'Citas manuales del dueño (incluye histórico) y cancelación.',
+      subtasks: ok(['Crear cita manual (diálogo de nueva cita)','Permitir citas en el pasado (histórico)','Cancelar cita','Evitar doble reserva con índice único'])},
+    {id:'B10', ep:'B', prio:'media', status:'progress',
+      title:'Ficha de cliente con historial y notas',
+      desc:'Clientes derivados de las citas; falta enriquecer con notas y contacto.',
+      subtasks: [
+        {text:'Listado de clientes agrupados por teléfono',done:true},
+        {text:'Conteo de visitas y última visita',done:true},
+        {text:'Buscar por nombre o teléfono',done:true},
+        {text:'Notas internas por cliente',done:false},
+        {text:'Datos de contacto y email del cliente',done:false}]},
+    {id:'B11', ep:'B', prio:'alta', status:'todo',
+      title:'Notificaciones automáticas (email / SMS / WhatsApp)',
+      desc:'Avisos automáticos al reservar; hoy se promete en el landing pero no está implementado.',
+      subtasks: pend(['Confirmación de reserva al cliente','Aviso de nueva cita al negocio','Plantillas de mensaje configurables','Elegir canales activos por barbería'])},
+    {id:'B12', ep:'B', prio:'alta', status:'todo',
+      title:'Recordatorios y control de ausencias (no-show)',
+      desc:'Reducir ausencias con recordatorios y seguimiento de no-show.',
+      subtasks: pend(['Recordatorio previo a la cita','Marcar cita como no-show','Política de ausencias','Estadística de ausencias'])},
+    {id:'B13', ep:'B', prio:'media', status:'done',
+      title:'Personalizar página pública de reservas',
+      desc:'La web pública de cada barbería usa su propia marca.',
+      subtasks: ok(['Aplicar color de acento y logo','Foto de portada','Botón de WhatsApp y mapa','Descripción y datos de contacto'])},
+    {id:'B14', ep:'B', prio:'media', status:'todo',
+      title:'Pagos en línea y depósitos al reservar',
+      desc:'Cobro o depósito al reservar como protección anti no-show (estilo Fresha).',
+      subtasks: pend(['Integrar pasarela de pago','Depósito o pago total del servicio','Política de reembolso','Conciliar el pago con la cita'])},
+    {id:'B15', ep:'B', prio:'media', status:'progress',
+      title:'Reportes: citas, ingresos y clientes',
+      desc:'KPIs básicos ya calculados; faltan reportes desglosados y exportación.',
+      subtasks: [
+        {text:'Citas de hoy y pendientes',done:true},
+        {text:'Ingresos del mes',done:true},
+        {text:'Total de clientes únicos',done:true},
+        {text:'Reporte por barbero / servicio',done:false},
+        {text:'Exportar a CSV',done:false}]},
+
+    // ───────────── Épica C · Usuario final ─────────────
+    {id:'C1', ep:'C', prio:'alta', status:'done',
+      title:'Ver disponibilidad en tiempo real',
+      desc:'Huecos calculados al instante según horario, duración y barberos.',
+      subtasks: ok(['Calcular huecos por horario y duración','Capacidad según nº de barberos','Marcar huecos ocupados (tachados)','Omitir huecos en el pasado'])},
+    {id:'C2', ep:'C', prio:'alta', status:'done',
+      title:'Flujo de reserva paso a paso',
+      desc:'Servicio → barbero → fecha → hora → datos → confirmar, optimizado para móvil.',
+      subtasks: ok(['Elegir servicio','Elegir barbero o "cualquiera"','Elegir fecha y hora','Ingresar datos y confirmar (POST /api/appointments)'])},
+    {id:'C3', ep:'C', prio:'baja', status:'done',
+      title:'Recordar datos del cliente',
+      desc:'Autocompletar al cliente recurrente en su mismo dispositivo.',
+      subtasks: ok(['Guardar nombre y teléfono en el dispositivo','Rellenar automáticamente en la próxima reserva'])},
+    {id:'C4', ep:'C', prio:'alta', status:'done',
+      title:'Confirmación de la cita',
+      desc:'Confirmación inmediata tras reservar, con validación en servidor.',
+      subtasks: ok(['Crear la cita en estado confirmado','Mostrar resumen de la reserva','Validar en servidor (hora pasada, solapes, día cerrado)'])},
+    {id:'C5', ep:'C', prio:'alta', status:'todo',
+      title:'Recordatorio automático antes de la cita',
+      desc:'Aviso al cliente antes de su cita (depende de notificaciones y cola).',
+      subtasks: pend(['Programar recordatorio (ej. 24 h y 2 h antes)','Enviar por el canal elegido','Enlazar con la cola de notificaciones'])},
+    {id:'C6', ep:'C', prio:'media', status:'todo',
+      title:'Cancelar / reagendar por el cliente',
+      desc:'Que el propio cliente gestione su cita según la política del negocio (hoy solo cancela el dueño).',
+      subtasks: pend(['Enlace de gestión de la cita','Cancelar dentro del plazo permitido','Reagendar a otro hueco libre','Avisar al negocio del cambio'])},
+    {id:'C7', ep:'C', prio:'baja', status:'todo',
+      title:'Historial de citas del cliente',
+      desc:'Que el cliente vea sus citas pasadas y futuras.',
+      subtasks: pend(['Listar citas pasadas y futuras','Reservar de nuevo en un clic'])},
+    {id:'C8', ep:'C', prio:'baja', status:'todo',
+      title:'Reseñas y valoraciones tras la cita',
+      desc:'Pedir valoración al terminar y mostrarla en la web pública (estilo Fresha).',
+      subtasks: pend(['Solicitar valoración tras completar la cita','Puntuación y comentario','Mostrar valoraciones en la web pública'])},
+    {id:'C9', ep:'C', prio:'baja', status:'todo',
+      title:'Lista de espera para horarios llenos',
+      desc:'Apuntarse a un horario sin hueco y avisar si se libera (estilo Fresha).',
+      subtasks: pend(['Apuntarse cuando no hay hueco','Avisar si se libera el horario'])},
+
+    // ───────────── Épica D · Infraestructura ─────────────
+    {id:'D1', ep:'D', prio:'alta', status:'done',
+      title:'Arquitectura multi-tenant',
+      desc:'Datos aislados por barbería mediante tenant_id.',
+      subtasks: ok(['tenant_id en todas las tablas','Filtrado por barbería en cada consulta','Borrado en cascada por barbería'])},
+    {id:'D2', ep:'D', prio:'media', status:'done',
+      title:'Enrutado por subdominio',
+      desc:'Cada barbería se sirve en su subdominio (barberia.navaja.cr).',
+      subtasks: ok(['Detectar subdominio del Host (proxy.ts)','Reescribir a /s/[slug]','Excluir API y estáticos del matcher'])},
+    {id:'D3', ep:'D', prio:'baja', status:'todo',
+      title:'Dominios personalizados propios',
+      desc:'Permitir que una barbería use su propio dominio.',
+      subtasks: pend(['Mapear dominio externo a la barbería','Verificación de dominio','Certificados / SSL automáticos'])},
+    {id:'D4', ep:'D', prio:'alta', status:'done',
+      title:'Seguridad: RLS y autorización por barbería',
+      desc:'Aislamiento real de datos: RLS + guardas en el servidor.',
+      subtasks: ok(['RLS activada en todas las tablas','Lectura pública solo de filas activas','appointments sin acceso público (solo service role)','requireTenantAccess en acciones y rutas'])},
+    {id:'D5', ep:'D', prio:'alta', status:'done',
+      title:'Prevención de doble reserva',
+      desc:'Evitar choques de reservas ante concurrencia.',
+      subtasks: ok(['Índice único (staff_id, starts_at) en confirmadas','Manejar el conflicto 23505 con mensaje claro','Revalidar solapes en el servidor'])},
+    {id:'D6', ep:'D', prio:'alta', status:'done',
+      title:'Zonas horarias y DST correctos',
+      desc:'Toda la lógica de horas respeta la zona horaria del negocio.',
+      subtasks: ok(['Conversión hora local ↔ UTC (zonedWallToUtc)','Día de la semana en la TZ del negocio','Guardar siempre en UTC (timestamptz)'])},
+    {id:'D7', ep:'D', prio:'media', status:'todo',
+      title:'Cola de envío de notificaciones',
+      desc:'Infraestructura de envío fiable para los avisos.',
+      subtasks: pend(['Encolar los mensajes a enviar','Reintentos ante fallo','Registro de entregas'])},
+    {id:'D8', ep:'D', prio:'baja', status:'todo',
+      title:'Integraciones externas',
+      desc:'Conectar con servicios de terceros (calendario y pagos).',
+      subtasks: pend(['Sincronizar con Google Calendar','Webhook de la pasarela de pago','Claves / API por barbería'])},
+    {id:'D9', ep:'D', prio:'baja', status:'review',
+      title:'Migraciones y respaldos de base de datos',
+      desc:'Migraciones versionadas listas; faltan respaldos automáticos verificados.',
+      subtasks: [
+        {text:'Migraciones versionadas (supabase/migrations)',done:true},
+        {text:'Script para aplicarlas (run-sql.mjs)',done:true},
+        {text:'Respaldos automáticos',done:false},
+        {text:'Restauración probada',done:false}]},
+  ];
+
+  const KEY = 'tablero-citas-v2';
+  let tasks = [];
+  let filter = 'all';
+  let editingId = null;
+  let editSubtasks = [];
+
+  function seedTasks(){
+    return SEED.map(t=>({
+      assignee:'',
+      ...t,
+      subtasks:(t.subtasks||[]).map(s=>({...s})),
+    }));
+  }
+  function load(){
+    try{
+      const saved = localStorage.getItem(KEY);
+      if(saved){ tasks = JSON.parse(saved); return; }
+    }catch(e){}
+    tasks = seedTasks();
+    save();
+  }
+  function save(){
+    try{ localStorage.setItem(KEY, JSON.stringify(tasks)); }catch(e){}
+  }
+  function resetSeed(){
+    if(!confirm('Esto descarta los cambios locales y vuelve a cargar las tareas revisadas. ¿Continuar?'))return;
+    tasks = seedTasks(); save(); render();
+  }
+
+  function initials(name){
+    if(!name) return '';
+    return name.trim().split(/\s+/).slice(0,2).map(w=>w[0]).join('').toUpperCase();
+  }
+
+  function render(){
+    const board = document.getElementById('board');
+    board.innerHTML = '';
+    COLS.forEach(col=>{
+      const list = tasks.filter(t=>t.status===col.id && (filter==='all'||t.ep===filter));
+      const colEl = document.createElement('div');
+      colEl.className='col';
+      colEl.dataset.col=col.id;
+      colEl.innerHTML = `
+        <div class="col-head">
+          <div class="col-name"><span class="dot" style="background:${col.color}"></span>${col.name}</div>
+          <span class="count">${list.length}</span>
+        </div>
+        <div class="col-list" data-col="${col.id}"></div>`;
+      const listEl = colEl.querySelector('.col-list');
+      if(list.length===0) listEl.innerHTML='<div class="empty">Sin tareas</div>';
+      list.forEach(t=>listEl.appendChild(cardEl(t)));
+
+      colEl.addEventListener('dragover',e=>{e.preventDefault();colEl.classList.add('drag-over')});
+      colEl.addEventListener('dragleave',()=>colEl.classList.remove('drag-over'));
+      colEl.addEventListener('drop',e=>{
+        e.preventDefault();colEl.classList.remove('drag-over');
+        const id=e.dataTransfer.getData('id');
+        const task=tasks.find(x=>x.id===id);
+        if(task){task.status=col.id;save();render();}
+      });
+      board.appendChild(colEl);
+    });
+    updateProgress();
+  }
+
+  function cardEl(t){
+    const ep=EPICS[t.ep];
+    const subs=t.subtasks||[];
+    const total=subs.length;
+    const sdone=subs.filter(s=>s.done).length;
+    const el=document.createElement('div');
+    el.className='card';
+    el.draggable=true;
+    el.tabIndex=0;
+    el.innerHTML=`
+      <div class="card-top">
+        <span class="ep-tag" style="background:${ep.s};color:${ep.c}">${t.ep} · ${ep.name}</span>
+        <span class="prio"><span class="pd p-${t.prio}"></span>${t.prio}</span>
+      </div>
+      <div class="card-title">${escapeHtml(t.title)}</div>
+      ${t.desc?`<div class="card-desc">${escapeHtml(t.desc)}</div>`:''}
+      <div class="card-foot">
+        <div class="left">
+          <span class="code">${t.id}</span>
+          ${total?`<span class="subbadge ${sdone===total?'full':''}">✓ ${sdone}/${total}</span>`:''}
+        </div>
+        ${t.assignee
+          ? `<span class="assignee" style="background:${EP_HEX[t.ep]}" title="${escapeHtml(t.assignee)}">${initials(t.assignee)}</span>`
+          : `<span class="assignee none" title="Sin asignar">+</span>`}
+      </div>`;
+    el.addEventListener('click',()=>openEdit(t.id));
+    el.addEventListener('dragstart',e=>{e.dataTransfer.setData('id',t.id);el.classList.add('dragging')});
+    el.addEventListener('dragend',()=>el.classList.remove('dragging'));
+    return el;
+  }
+
+  function escapeHtml(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+
+  function updateProgress(){
+    const total=tasks.length;
+    const done=tasks.filter(t=>t.status==='done').length;
+    document.getElementById('pdone').textContent=done;
+    document.getElementById('ptotal').textContent=total;
+    document.getElementById('pbar').style.width=(total?Math.round(done/total*100):0)+'%';
+  }
+
+  /* ---- filtros ---- */
+  document.getElementById('filters').addEventListener('click',e=>{
+    const chip=e.target.closest('.chip');if(!chip)return;
+    document.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));
+    chip.classList.add('on');filter=chip.dataset.ep;render();
+  });
+
+  /* ---- subtareas dentro del modal ---- */
+  function renderSubtasks(){
+    const list=document.getElementById('sub-list');
+    if(!editSubtasks.length){
+      list.innerHTML='<div class="empty" style="padding:8px 0">Sin subtareas todavía</div>';
+    }else{
+      list.innerHTML=editSubtasks.map((s,i)=>`
+        <div class="sub-item ${s.done?'done':''}">
+          <input type="checkbox" ${s.done?'checked':''} onclick="toggleSubtask(${i})">
+          <span>${escapeHtml(s.text)}</span>
+          <button type="button" title="Quitar" onclick="removeSubtask(${i})">&times;</button>
+        </div>`).join('');
+    }
+    const done=editSubtasks.filter(s=>s.done).length;
+    document.getElementById('sub-count').textContent=editSubtasks.length?`(${done}/${editSubtasks.length})`:'';
+  }
+  function toggleSubtask(i){editSubtasks[i].done=!editSubtasks[i].done;renderSubtasks();}
+  function removeSubtask(i){editSubtasks.splice(i,1);renderSubtasks();}
+  function addSubtask(){
+    const inp=document.getElementById('sub-input');
+    const v=inp.value.trim();
+    if(!v)return;
+    editSubtasks.push({text:v,done:false});
+    inp.value='';renderSubtasks();inp.focus();
+  }
+  document.getElementById('sub-input').addEventListener('keydown',e=>{
+    if(e.key==='Enter'){e.preventDefault();addSubtask();}
+  });
+
+  /* ---- modal ---- */
+  function openNew(){
+    editingId=null;editSubtasks=[];
+    document.getElementById('modal-title').textContent='Nueva tarea';
+    document.getElementById('f-title').value='';
+    document.getElementById('f-desc').value='';
+    document.getElementById('f-epic').value='B';
+    document.getElementById('f-prio').value='media';
+    document.getElementById('f-status').value='todo';
+    document.getElementById('f-assignee').value='';
+    document.getElementById('sub-input').value='';
+    document.getElementById('del-btn').style.visibility='hidden';
+    renderSubtasks();
+    document.getElementById('overlay').classList.add('show');
+    document.getElementById('f-title').focus();
+  }
+  function openEdit(id){
+    const t=tasks.find(x=>x.id===id);if(!t)return;
+    editingId=id;
+    editSubtasks=(t.subtasks||[]).map(s=>({...s}));
+    document.getElementById('modal-title').textContent='Editar '+t.id;
+    document.getElementById('f-title').value=t.title;
+    document.getElementById('f-desc').value=t.desc||'';
+    document.getElementById('f-epic').value=t.ep;
+    document.getElementById('f-prio').value=t.prio;
+    document.getElementById('f-status').value=t.status;
+    document.getElementById('f-assignee').value=t.assignee||'';
+    document.getElementById('sub-input').value='';
+    document.getElementById('del-btn').style.visibility='visible';
+    renderSubtasks();
+    document.getElementById('overlay').classList.add('show');
+  }
+  function closeModal(){document.getElementById('overlay').classList.remove('show')}
+  function saveTask(){
+    const title=document.getElementById('f-title').value.trim();
+    if(!title){document.getElementById('f-title').focus();return;}
+    const data={
+      title,
+      desc:document.getElementById('f-desc').value.trim(),
+      ep:document.getElementById('f-epic').value,
+      prio:document.getElementById('f-prio').value,
+      status:document.getElementById('f-status').value,
+      assignee:document.getElementById('f-assignee').value.trim(),
+      subtasks:editSubtasks.map(s=>({...s})),
+    };
+    if(editingId){
+      Object.assign(tasks.find(x=>x.id===editingId),data);
+    }else{
+      const prefix=data.ep;
+      const nums=tasks.filter(t=>t.ep===prefix).map(t=>parseInt(t.id.slice(1))||0);
+      const next=(nums.length?Math.max(...nums):0)+1;
+      tasks.push({id:prefix+next,...data});
+    }
+    save();render();closeModal();
+  }
+  function deleteTask(){
+    if(!editingId)return;
+    tasks=tasks.filter(x=>x.id!==editingId);
+    save();render();closeModal();
+  }
+  document.getElementById('overlay').addEventListener('click',e=>{if(e.target.id==='overlay')closeModal()});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
+
+  /* ---- export / import (para compartir el estado en equipo) ---- */
+  function exportJSON(){
+    const blob=new Blob([JSON.stringify(tasks,null,2)],{type:'application/json'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='tablero-citas.json';a.click();
+    URL.revokeObjectURL(a.href);
+  }
+  function importJSON(e){
+    const file=e.target.files[0];if(!file)return;
+    const r=new FileReader();
+    r.onload=()=>{
+      try{
+        const data=JSON.parse(r.result);
+        if(Array.isArray(data)){tasks=data;save();render();}
+      }catch(err){alert('No se pudo leer el archivo. Asegúrate de que sea un tablero exportado.');}
+    };
+    r.readAsText(file);
+    e.target.value='';
+  }
+
+  load();render();
+</script>
+</body>
+</html>
