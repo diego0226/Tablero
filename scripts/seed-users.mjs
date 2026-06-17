@@ -5,13 +5,13 @@
 // Uso:  npm run seed:users
 //
 // ⚠️ Mantén esta lista sincronizada con src/lib/users.ts
-// ⚠️ El dominio sintético `tablero.navaja` debe coincidir con AUTH_DOMAIN.
+// ⚠️ El dominio sintético `tablero.razor` debe coincidir con AUTH_DOMAIN.
 import "./_env.mjs";
 import { requireEnv } from "./_env.mjs";
 import { randomBytes } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 
-const AUTH_DOMAIN = "tablero.navaja";
+const AUTH_DOMAIN = "tablero.razor";
 
 // Genera una contraseña aleatoria legible si no se define por variable de entorno.
 const genPass = () =>

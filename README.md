@@ -1,6 +1,6 @@
-# Tablero · Navaja
+# Tablero · Razor
 
-Tablero Kanban para llevar el control del proyecto del SaaS de citas (Navaja).
+Tablero Kanban para llevar el control del proyecto del SaaS de citas (Razor).
 Convertido de un HTML estático a **Next.js + Supabase**, con login para el
 equipo y un único tablero compartido en la nube.
 
@@ -20,7 +20,7 @@ El proyecto de Supabase **ya está creado y listo** (`Tablero-SaaS`, ref `wjnyvh
 - Tablas, RLS y realtime aplicados (migraciones `0001` y `0002`).
 - Las **42 tareas** iniciales ya están cargadas.
 - Los **3 usuarios** ya están creados y confirmados.
-- El acceso al tablero está restringido por RLS a los usuarios `@tablero.navaja`,
+- El acceso al tablero está restringido por RLS a los usuarios `@tablero.razor`,
   así que aunque alguien se registre con otro correo, no puede ver ni tocar el tablero.
 - Las variables públicas están en `.env.local` (local) y `.env.production` (build de Vercel).
 
@@ -122,9 +122,9 @@ Abre <http://localhost:3000>. Te pedirá iniciar sesión (p.ej. usuario `diego`)
    ```bash
    git init
    git add .
-   git commit -m "Tablero Navaja"
+   git commit -m "Tablero Razor"
    git branch -M main
-   git remote add origin https://github.com/TU-USUARIO/tablero-navaja.git
+   git remote add origin https://github.com/TU-USUARIO/tablero-razor.git
    git push -u origin main
    ```
 

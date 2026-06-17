@@ -3,12 +3,12 @@
 // únicos que pueden iniciar sesión.
 //
 // Como Supabase Auth trabaja con email, mapeamos cada "usuario" a un email
-// sintético interno (usuario@tablero.navaja). El usuario nunca ve ese email:
+// sintético interno (usuario@tablero.razor). El usuario nunca ve ese email:
 // solo escribe su nombre de usuario y su contraseña.
 //
 // ⚠️ Si cambias esta lista, actualiza también `scripts/seed-users.mjs`.
 
-export const AUTH_DOMAIN = "tablero.navaja";
+export const AUTH_DOMAIN = "tablero.razor";
 
 export type AppUser = {
   username: string;

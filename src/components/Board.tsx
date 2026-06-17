@@ -232,11 +232,11 @@ export default function Board({ currentUserName }: { currentUserName: string }) 
       <header>
         <div className="head-row">
           <div className="title-wrap">
-            <div className="mark">N</div>
+            <div className="mark">R</div>
             <div>
               <h1>SaaS de citas — tablero</h1>
               <div className="sub">
-                Estado real del proyecto (Navaja · reservas para barberías)
+                Estado real del proyecto (Razor · reservas para barberías)
               </div>
             </div>
           </div>

@@ -38,10 +38,10 @@ export default function LoginPage() {
     <div className="login-wrap">
       <div className="login-card">
         <div className="login-brand">
-          <div className="mark">N</div>
+          <div className="mark">R</div>
           <div>
             <strong style={{ fontFamily: "var(--serif)", fontSize: 16 }}>
-              Tablero · Navaja
+              Tablero · Razor
             </strong>
             <div className="sub">Control del proyecto</div>
           </div>

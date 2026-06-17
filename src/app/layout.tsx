@@ -17,7 +17,7 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: "Tablero — Navaja",
+  title: "Tablero — Razor",
   description: "Tablero de control del proyecto (SaaS de citas para barberías)",
 };
 

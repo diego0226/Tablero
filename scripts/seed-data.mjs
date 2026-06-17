@@ -158,7 +158,7 @@ export const SEED = [
     subtasks: ok(["tenant_id en todas las tablas", "Filtrado por barbería en cada consulta", "Borrado en cascada por barbería"]) },
   { code: "D2", ep: "D", prio: "media", status: "done",
     title: "Enrutado por subdominio",
-    description: "Cada barbería se sirve en su subdominio (barberia.navaja.cr).",
+    description: "Cada barbería se sirve en su subdominio (barberia.razor.cr).",
     subtasks: ok(["Detectar subdominio del Host (proxy.ts)", "Reescribir a /s/[slug]", "Excluir API y estáticos del matcher"]) },
   { code: "D3", ep: "D", prio: "baja", status: "todo",
     title: "Dominios personalizados propios",
