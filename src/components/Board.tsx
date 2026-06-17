@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { USERS } from "@/lib/users";
+import { USERS, colorForName } from "@/lib/users";
 import type { Epic, Priority, Status, Subtask, Task } from "@/lib/types";
 
 const COLS: { id: Status; name: string; color: string }[] = [
@@ -18,13 +18,6 @@ const EPICS: Record<Epic, { name: string; c: string; s: string }> = {
   B: { name: "Cliente", c: "var(--epB)", s: "var(--epB-s)" },
   C: { name: "Usuario", c: "var(--epC)", s: "var(--epC-s)" },
   D: { name: "Infra", c: "var(--epD)", s: "var(--epD-s)" },
-};
-
-const EP_HEX: Record<Epic, string> = {
-  A: "#6D5BD0",
-  B: "#1D7A5F",
-  C: "#E07A5F",
-  D: "#3B7CB0",
 };
 
 function initials(name: string): string {
@@ -249,7 +242,11 @@ export default function Board({ currentUserName }: { currentUserName: string }) 
           </div>
           <div className="actions">
             <div className="who">
-              <span className="me" title={currentUserName}>
+              <span
+                className="me"
+                style={{ background: colorForName(currentUserName) }}
+                title={currentUserName}
+              >
                 {initials(currentUserName)}
               </span>
               <span>
@@ -586,7 +583,7 @@ function Card({ t, onClick }: { t: Task; onClick: () => void }) {
         {t.assignee ? (
           <span
             className="assignee"
-            style={{ background: EP_HEX[t.ep] }}
+            style={{ background: colorForName(t.assignee) }}
             title={t.assignee}
           >
             {initials(t.assignee)}

@@ -13,14 +13,26 @@ export const AUTH_DOMAIN = "tablero.navaja";
 export type AppUser = {
   username: string;
   name: string;
+  color: string;
 };
 
+// Color fijo por persona (avatar del header y de responsable en las tarjetas).
 export const USERS: AppUser[] = [
-  { username: "diego", name: "Diego Zamora" },
-  { username: "keylor", name: "Keylor Barrantes" },
-  { username: "pablo", name: "Pablo Jiménez" },
+  { username: "diego", name: "Diego Zamora", color: "#D64545" }, // rojo
+  { username: "keylor", name: "Keylor Barrantes", color: "#1D7A5F" }, // verde
+  { username: "pablo", name: "Pablo Jiménez", color: "#3B7CB0" }, // azul
 ];
+
+const DEFAULT_COLOR = "#6B6B66";
 
 export function emailForUsername(username: string): string {
   return `${username.trim().toLowerCase()}@${AUTH_DOMAIN}`;
+}
+
+// Devuelve el color asignado a una persona por su nombre (con respaldo neutro).
+export function colorForName(name: string): string {
+  if (!name) return DEFAULT_COLOR;
+  const target = name.trim().toLowerCase();
+  const u = USERS.find((u) => u.name.toLowerCase() === target);
+  return u ? u.color : DEFAULT_COLOR;
 }
