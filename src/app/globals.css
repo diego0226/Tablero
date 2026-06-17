@@ -43,8 +43,8 @@ h1{font-family:var(--serif);font-size:22px;font-weight:600;letter-spacing:-.02em
 .chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
 
 /* board */
-.board{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;padding:22px 28px 40px;align-items:start}
-.col{background:rgba(0,0,0,.015);border:1px solid var(--line);border-radius:14px;padding:12px;min-height:55vh;display:flex;flex-direction:column}
+.board{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;padding:22px 28px 40px;align-items:stretch}
+.col{background:rgba(0,0,0,.015);border:1px solid var(--line);border-radius:14px;padding:12px;min-height:240px;display:flex;flex-direction:column}
 .col-head{display:flex;align-items:center;justify-content:space-between;padding:4px 6px 12px}
 .col-name{font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px}
 .dot{width:9px;height:9px;border-radius:50%}
