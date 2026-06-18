@@ -313,10 +313,23 @@ export default function Board({ currentUserName }: { currentUserName: string }) 
       ) : (
         <div className="board">
           {COLS.map((col) => {
-            const list = tasks.filter(
-              (t) =>
-                t.status === col.id && (filter === "all" || t.ep === filter)
-            );
+            const prioOrder = { alta: 3, media: 2, baja: 1 };
+            const list = tasks
+              .filter(
+                (t) =>
+                  t.status === col.id && (filter === "all" || t.ep === filter)
+              )
+              .sort((a, b) => {
+                const valA = prioOrder[a.prio] || 0;
+                const valB = prioOrder[b.prio] || 0;
+                if (valB !== valA) {
+                  return valB - valA; // de más alta a más baja
+                }
+                if (a.sort_order !== b.sort_order) {
+                  return (a.sort_order ?? 0) - (b.sort_order ?? 0);
+                }
+                return a.code.localeCompare(b.code);
+              });
             return (
               <div
                 key={col.id}
