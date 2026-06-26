@@ -192,9 +192,13 @@ export default function Board({ currentUserName }: { currentUserName: string }) 
         (m, t) => Math.max(m, t.sort_order ?? 0),
         0
       );
-      await supabase
+      const { error } = await supabase
         .from("tasks")
         .insert({ ...payload, code, sort_order: maxOrder + 1 });
+      if (error) {
+        alert("Error al crear la tarea: " + error.message);
+        return;
+      }
     }
     setModalOpen(false);
     load();
