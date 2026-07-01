@@ -17,8 +17,10 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: "Tablero — Razor",
-  description: "Tablero de control del proyecto (SaaS de citas para barberías)",
+  title: "Tablero · Razor",
+  description: "Tablero interno de control del proyecto Razor.",
+  // Herramienta privada tras login: no debe indexarse en buscadores.
+  robots: { index: false, follow: false },
 };
 
 export default function RootLayout({

@@ -56,22 +56,37 @@ async function main() {
     const meta = { name: u.name, username: u.username };
     try {
       const existing = await findUserByEmail(email);
+      let userId;
       if (existing) {
         const { error } = await supabase.auth.admin.updateUserById(
           existing.id,
           { password: u.password, user_metadata: meta, email_confirm: true }
         );
         if (error) throw error;
+        userId = existing.id;
         console.log(`↻ Actualizado  ${u.name}  (usuario: ${u.username})`);
       } else {
-        const { error } = await supabase.auth.admin.createUser({
+        const { data, error } = await supabase.auth.admin.createUser({
           email,
           password: u.password,
           email_confirm: true,
           user_metadata: meta,
         });
         if (error) throw error;
+        userId = data.user.id;
         console.log(`✓ Creado       ${u.name}  (usuario: ${u.username})`);
+      }
+
+      // Allowlist real del tablero (migración 0004). La autorización RLS
+      // depende de estar en esta tabla, no del dominio del email.
+      const { error: tmErr } = await supabase
+        .from("team_members")
+        .upsert({ user_id: userId, username: u.username }, { onConflict: "user_id" });
+      if (tmErr) {
+        console.warn(
+          `  ⚠ No se pudo registrar en team_members (${tmErr.message}). ` +
+            `¿Aplicaste supabase/migrations/0004_hardening.sql?`
+        );
       }
     } catch (err) {
       console.error(`✖ Error con ${u.username}:`, err.message);

@@ -40,7 +40,7 @@ async function main() {
     description: t.description ?? "",
     assignee: "",
     subtasks: t.subtasks ?? [],
-    sort_order: i,
+    sort_order: i + 1, // > 0: el trigger 0004 respeta el orden explícito del seed
   }));
 
   const { error } = await supabase.from("tasks").insert(rows);

@@ -34,3 +34,6 @@ dev.log
 *.tsbuildinfo
 
 .vercel
+
+# Producción: configurar las env vars en el panel de Vercel, no en el repo.
+/.env.production

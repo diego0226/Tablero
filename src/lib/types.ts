@@ -18,4 +18,6 @@ export type Task = {
   assignee: string;
   subtasks: Subtask[];
   sort_order: number;
+  created_by?: string | null;
+  updated_by?: string | null;
 };
