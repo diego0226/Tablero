@@ -5,6 +5,8 @@ Convertido de un HTML estático a **Next.js + Supabase**, con login para el
 equipo y un único tablero compartido en la nube.
 
 - **Tablero compartido**: los 3 usuarios ven y editan las mismas tareas, en vivo.
+- **Prospección compartida**: las fichas de negocios de Grecia, con sus mensajes
+  ya redactados y el estado de cada contacto, también en vivo.
 - **Login obligatorio** por usuario y contraseña. **No hay registro público.**
 - **Usuarios fijos**: Diego Zamora, Keylor Barrantes y Pablo Jiménez.
 - Arrastrar tarjetas entre columnas, subtareas, prioridades, responsables, filtros por épica y barra de progreso.
@@ -17,8 +19,9 @@ equipo y un único tablero compartido en la nube.
 
 El proyecto de Supabase **ya está creado y listo** (`Tablero-SaaS`, ref `wjnyvhrthuhbnfkjkbur`):
 
-- Tablas, RLS y realtime aplicados (migraciones `0001` y `0002`).
+- Tablas, RLS y realtime aplicados (migraciones `0001` a `0007`).
 - Las **42 tareas** iniciales ya están cargadas.
+- Las **23 fichas de prospección** y los **4 guiones de objeción** ya están cargados.
 - Los **3 usuarios** ya están creados y confirmados.
 - El acceso al tablero está restringido por RLS a los usuarios `@tablero.razor`,
   así que aunque alguien se registre con otro correo, no puede ver ni tocar el tablero.
@@ -115,6 +118,46 @@ Abre <http://localhost:3000>. Te pedirá iniciar sesión (p.ej. usuario `diego`)
 
 ---
 
+## Prospección (`/prospeccion`)
+
+Segunda pestaña de la app. Sustituye al HTML suelto que se llevaba en el
+navegador: antes el estado de cada contacto vivía en el `localStorage` de una
+sola máquina; ahora está en Supabase y los tres lo ven al instante.
+
+Cada **ficha** trae lo mismo que la investigación original: señales verificadas
+(✓) y sin verificar (?), dolor probable, ángulo de contacto, canal recomendado
+con su advertencia, dato para personalizar, qué NO decir, los tres mensajes
+listos (Instagram, WhatsApp y seguimiento) con contador de caracteres, y el
+próximo paso.
+
+Lo que se puede hacer:
+
+- **Copiar** cualquier mensaje o guion de objeción (el guion sustituye `{{N}}`
+  por el nombre del negocio). Si la ficha está pendiente, al copiar un mensaje
+  inicial se ofrece marcarla como *contactado*.
+- **Abrir WhatsApp** con el mensaje ya escrito (solo si hay número confirmado).
+- **Estado y notas** por ficha, compartidos: `pendiente`, `contactado`,
+  `respondió`, `agendado`, `no contactar`. Las notas se guardan solas.
+- **Filtrar** por prioridad, segmento, “sin contactar” o texto libre.
+- **Crear, editar y borrar** fichas y guiones desde la misma vista.
+- **Exportar** un CSV con el estado de la campaña.
+
+Debajo de las fichas quedan fijos los criterios de la campaña: preguntas de
+calificación, cómo se calculó el puntaje, reglas de contacto y qué no decir.
+
+Para recrearlo desde cero: aplicar
+[`supabase/migrations/0007_prospects.sql`](supabase/migrations/0007_prospects.sql)
+y correr `npm run seed:prospects` (solo inserta lo que falte; nunca pisa lo que
+el equipo ya editó).
+
+> ⚠️ El archivo de semilla `scripts/seed-data-prospects.mjs` **no está en el
+> repositorio**: lleva la lista de negocios con sus teléfonos, los mensajes y
+> los precios, y este repositorio es público. Vive en la máquina de cada quien y
+> en Supabase. Si hace falta recrearlo, pedíselo al equipo o exportá las fichas
+> desde la app.
+
+---
+
 ## Desplegar en Vercel
 
 1. Sube el proyecto a un repositorio de GitHub:
@@ -144,18 +187,28 @@ Abre <http://localhost:3000>. Te pedirá iniciar sesión (p.ej. usuario `diego`)
 ```
 src/
   app/
-    layout.tsx          · layout raíz + fuentes
-    globals.css         · estilos (portados del HTML)
-    login/page.tsx      · pantalla de inicio de sesión
-    page.tsx            · tablero (protegido)
-  components/Board.tsx   · el tablero Kanban (cliente)
+    layout.tsx            · layout raíz + fuentes
+    globals.css           · estilos (portados del HTML)
+    login/page.tsx        · pantalla de inicio de sesión
+    page.tsx              · tablero (protegido)
+    prospeccion/page.tsx  · prospección (protegida)
+  components/
+    AppHeader.tsx         · cabecera y pestañas comunes
+    Board.tsx             · el tablero Kanban (cliente)
+    Prospects.tsx         · la vista de prospección (cliente)
+    ProspectCard.tsx      · una ficha de negocio
+    ProspectModal.tsx     · alta/edición de ficha
+    ScriptModal.tsx       · alta/edición de guion
+    ProspectDoctrine.tsx  · criterios fijos de la campaña
+    Toasts.tsx            · avisos compartidos
   lib/
-    users.ts            · lista de usuarios y dominio sintético
-    types.ts            · tipos de Tarea/Subtarea
-    supabase/           · clientes de Supabase (navegador, servidor, middleware)
-middleware.ts            · protege rutas y refresca la sesión
-supabase/migrations/     · SQL de la base de datos
-scripts/                 · seed de usuarios y tareas
+    users.ts              · lista de usuarios y dominio sintético
+    types.ts              · tipos de Tarea/Subtarea y Ficha/Guion
+    prospects.ts          · constantes y utilidades de prospección
+    supabase/             · clientes de Supabase (navegador, servidor, middleware)
+middleware.ts              · protege rutas y refresca la sesión
+supabase/migrations/       · SQL de la base de datos
+scripts/                   · seed de usuarios, tareas y fichas
 ```
 
 ## Notas
@@ -165,3 +218,6 @@ scripts/                 · seed de usuarios y tareas
   **Exportar** (descarga un JSON de respaldo).
 - Para cambiar quién está en el equipo: edita `src/lib/users.ts` **y**
   `scripts/seed-users.mjs`, y vuelve a correr `npm run seed:users`.
+- Las fichas de prospección son **datos de trabajo**, no contenido del repo: la
+  semilla solo sirvió para la carga inicial y no se versiona. Lo que valga se
+  edita en la app, que es lo que ve todo el equipo.

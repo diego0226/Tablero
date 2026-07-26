@@ -37,3 +37,8 @@ dev.log
 
 # Producción: configurar las env vars en el panel de Vercel, no en el repo.
 /.env.production
+
+# Datos comerciales: la semilla de prospección lleva la lista de negocios con
+# sus teléfonos, los mensajes y los precios. El repositorio es público, así que
+# vive solo en local y en Supabase, no acá.
+/scripts/seed-data-prospects.mjs

@@ -9,7 +9,8 @@
     "lint": "next lint",
     "seed:users": "node scripts/seed-users.mjs",
     "seed:tasks": "node scripts/seed-tasks.mjs",
-    "seed": "node scripts/seed-users.mjs && node scripts/seed-tasks.mjs"
+    "seed:prospects": "node scripts/seed-prospects.mjs",
+    "seed": "node scripts/seed-users.mjs && node scripts/seed-tasks.mjs && node scripts/seed-prospects.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",

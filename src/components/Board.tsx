@@ -7,8 +7,8 @@ import {
   useRef,
   useState,
 } from "react";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import AppHeader from "@/components/AppHeader";
 import { USERS, colorForName } from "@/lib/users";
 import type { Epic, Priority, Status, Subtask, Task } from "@/lib/types";
 
@@ -78,7 +78,6 @@ type DropInfo = { status: Status; index: number };
 
 export default function Board({ currentUserName }: { currentUserName: string }) {
   const supabase = useMemo(() => createClient(), []);
-  const router = useRouter();
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const tasksRef = useRef<Task[]>([]);
@@ -546,51 +545,21 @@ export default function Board({ currentUserName }: { currentUserName: string }) 
     URL.revokeObjectURL(a.href);
   }
 
-  async function signOut() {
-    await supabase.auth.signOut();
-    router.replace("/login");
-    router.refresh();
-  }
-
   const doneSubs = draft.subtasks.filter((s) => s.done).length;
 
   return (
     <>
-      <header>
-        <div className="head-row">
-          <div className="title-wrap">
-            <div className="mark">R</div>
-            <div>
-              <h1>SaaS de citas — tablero</h1>
-              <div className="sub">
-                Estado real del proyecto (Razor · reservas para barberías)
-              </div>
-            </div>
-          </div>
-          <div className="actions">
-            <div className="who">
-              <span
-                className="me"
-                style={{ background: colorForName(currentUserName) }}
-                title={currentUserName}
-              >
-                {initials(currentUserName)}
-              </span>
-              <span>
-                <b>{currentUserName}</b>
-              </span>
-            </div>
+      <AppHeader
+        currentUserName={currentUserName}
+        title="SaaS de citas — tablero"
+        subtitle="Estado real del proyecto (Razor · reservas para barberías)"
+        actions={
+          <>
             <button className="btn" onClick={exportJSON}>
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
               </svg>
               Exportar
-            </button>
-            <button className="btn" onClick={signOut}>
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
-              </svg>
-              Salir
             </button>
             <button className="btn btn-primary" onClick={openNew}>
               <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -598,9 +567,9 @@ export default function Board({ currentUserName }: { currentUserName: string }) 
               </svg>
               Nueva tarea
             </button>
-          </div>
-        </div>
-
+          </>
+        }
+      >
         <div className="strip">
           <div className="progress-wrap">
             <div className="progress-top">
@@ -641,7 +610,7 @@ export default function Board({ currentUserName }: { currentUserName: string }) 
             ))}
           </div>
         </div>
-      </header>
+      </AppHeader>
 
       {loading ? (
         <div className="loading">Cargando tablero…</div>
