@@ -15,22 +15,55 @@ import {
   ScoringTable,
 } from "@/components/ProspectDoctrine";
 import {
+  PROSPECT_STATUSES,
+  STATUS_META,
   byProspectOrder,
   fillTemplate,
+  isPartialProspect,
+  normalizeProspect,
   searchIndex,
   uniqueSlug,
 } from "@/lib/prospects";
 import type { Prospect, ProspectScript, ProspectStatus } from "@/lib/types";
 
-type PriorityFilter = "all" | "A" | "B" | "C" | "pend";
+type PriorityFilter = "all" | "A" | "B" | "C";
+type StatusFilter = "all" | ProspectStatus;
 
 const FILTERS: { id: PriorityFilter; label: string }[] = [
   { id: "all", label: "Todas" },
   { id: "A", label: "Prioridad A" },
   { id: "B", label: "Prioridad B" },
   { id: "C", label: "Prioridad C" },
-  { id: "pend", label: "Sin contactar" },
 ];
+
+// Placeholder de carga: mismo esqueleto que una ficha real para que la lista
+// no salte al llegar los datos.
+function CardSkeleton() {
+  return (
+    <div className="pros-card sk-card" aria-hidden="true">
+      <div className="sk-row">
+        <div className="sk-col">
+          <span className="sk sk-line w60" style={{ height: 17 }} />
+          <span className="sk sk-line w40" />
+        </div>
+        <span className="sk" style={{ width: 58, height: 26 }} />
+      </div>
+      <div className="sk-col" style={{ marginTop: 16 }}>
+        <span className="sk sk-line w90" />
+        <span className="sk sk-line w75" />
+      </div>
+      <div className="sk-grid">
+        <span className="sk" style={{ height: 40 }} />
+        <span className="sk" style={{ height: 40 }} />
+      </div>
+      <span className="sk" style={{ height: 86, marginTop: 14, display: "block" }} />
+      <div className="sk-row" style={{ marginTop: 14 }}>
+        <span className="sk" style={{ width: 84, height: 30 }} />
+        <span className="sk" style={{ width: 148, height: 30 }} />
+      </div>
+    </div>
+  );
+}
 
 // Portapapeles con plan B: en navegadores viejos o contextos sin permiso,
 // `navigator.clipboard` no existe o falla en silencio.
@@ -78,6 +111,7 @@ export default function Prospects({
   const [loadError, setLoadError] = useState(false);
 
   const [filter, setFilter] = useState<PriorityFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [segment, setSegment] = useState("all");
   const [query, setQuery] = useState("");
 
@@ -94,21 +128,65 @@ export default function Prospects({
   const [notesState, setNotesState] = useState<Record<string, NotesState>>({});
 
   /* ---------------------------------------------------------------- datos */
-  const upsertLocal = useCallback((row: Prospect) => {
+  // Toda ficha entra por acá: se normaliza y se fusiona sobre la que ya está
+  // en pantalla, nunca la reemplaza a ciegas (ver `normalizeProspect`).
+  // Cuándo se recibió por última vez una fila entera de cada ficha. Sirve para
+  // no volver a pedirla si el eco de Realtime llega justo después.
+  const freshAt = useRef(new Map<string, number>());
+
+  const upsertLocal = useCallback((row: Partial<Prospect>) => {
+    if (typeof row?.id !== "string" || !row.id) return;
+    const id = row.id;
+    if (!isPartialProspect(row)) freshAt.current.set(id, Date.now());
     setProspects((prev) => {
-      const i = prev.findIndex((p) => p.id === row.id);
-      if (i === -1) return [...prev, row];
-      const next = prev.slice();
+      const i = prev.findIndex((p) => p.id === id);
+      const merged = normalizeProspect(row, i === -1 ? undefined : prev[i]);
       // Si hay notas sin guardar en esta ficha, no las pisamos con lo remoto.
-      const local = notesPending.current.get(row.id);
-      next[i] = local === undefined ? row : { ...row, notes: local };
-      return next;
+      const local = notesPending.current.get(id);
+      const next = local === undefined ? merged : { ...merged, notes: local };
+      if (i === -1) return [...prev, next];
+      const copy = prev.slice();
+      copy[i] = next;
+      return copy;
     });
   }, []);
 
   const removeLocal = useCallback((id: string) => {
     setProspects((prev) => prev.filter((p) => p.id !== id));
   }, []);
+
+  // Realtime manda la fila recortada cuando solo cambió un campo pequeño: los
+  // textos largos viajan en `null`. La fusión evita el hueco, pero si otro del
+  // equipo editó justo esos textos nos quedaríamos con la versión vieja, así
+  // que pedimos la fila completa. Una petición por ficha a la vez.
+  const refetching = useRef(new Set<string>());
+  const refetchOne = useCallback(
+    async (id: string) => {
+      if (refetching.current.has(id)) return;
+      refetching.current.add(id);
+      const { data } = await supabase
+        .from("prospects")
+        .select("*")
+        .eq("id", id)
+        .maybeSingle();
+      refetching.current.delete(id);
+      if (data) upsertLocal(data as Prospect);
+    },
+    [supabase, upsertLocal]
+  );
+
+  const applyRemote = useCallback(
+    (row: Partial<Prospect>) => {
+      if (typeof row?.id !== "string" || !row.id) return;
+      const id = row.id;
+      // El cambio propio ya trajo la fila entera en la respuesta del PATCH:
+      // el eco de Realtime que llega detrás no necesita otra petición.
+      const fresh = Date.now() - (freshAt.current.get(id) ?? 0) < 2000;
+      upsertLocal(row);
+      if (isPartialProspect(row) && !fresh) refetchOne(id);
+    },
+    [upsertLocal, refetchOne]
+  );
 
   const load = useCallback(async () => {
     const [{ data: rows, error }, { data: scriptRows, error: scriptError }] =
@@ -120,7 +198,9 @@ export default function Prospects({
       setLoadError(true);
     } else {
       setLoadError(false);
-      setProspects((rows ?? []) as Prospect[]);
+      setProspects(
+        ((rows ?? []) as Partial<Prospect>[]).map((r) => normalizeProspect(r))
+      );
       setScripts(
         ((scriptRows ?? []) as ProspectScript[]).sort(
           (a, b) => a.sort_order - b.sort_order
@@ -137,12 +217,12 @@ export default function Prospects({
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "prospects" },
-        (p) => upsertLocal(p.new as Prospect)
+        (p) => applyRemote(p.new as Partial<Prospect>)
       )
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "prospects" },
-        (p) => upsertLocal(p.new as Prospect)
+        (p) => applyRemote(p.new as Partial<Prospect>)
       )
       .on(
         "postgres_changes",
@@ -170,7 +250,7 @@ export default function Prospects({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [supabase, load, upsertLocal, removeLocal]);
+  }, [supabase, load, applyRemote, removeLocal]);
 
   // Al salir de la vista, lo que quedó en el temporizador se guarda igual.
   useEffect(() => {
@@ -187,22 +267,56 @@ export default function Prospects({
   }, [supabase]);
 
   /* --------------------------------------------------------------- estado */
+  // Un contador por ficha: si se cambia el estado dos veces seguidas, la
+  // respuesta de la primera llega tarde y no debe pisar a la segunda.
+  const statusSeq = useRef(new Map<string, number>());
+  const [statusSaving, setStatusSaving] = useState<Record<string, boolean>>({});
+
   const setStatus = useCallback(
     async (id: string, status: ProspectStatus) => {
-      const snapshot = prospectsRef.current;
+      const before = prospectsRef.current.find((p) => p.id === id);
+      if (!before || before.status === status) return;
+
+      const seq = (statusSeq.current.get(id) ?? 0) + 1;
+      statusSeq.current.set(id, seq);
+
       setProspects((prev) =>
         prev.map((p) => (p.id === id ? { ...p, status } : p))
       );
-      const { error } = await supabase
+      setStatusSaving((s) => ({ ...s, [id]: true }));
+
+      // `select()` devuelve la fila completa: es la versión buena del servidor
+      // y evita depender del payload recortado de Realtime.
+      const { data, error } = await supabase
         .from("prospects")
         .update({ status })
-        .eq("id", id);
+        .eq("id", id)
+        .select()
+        .maybeSingle();
+
+      if (statusSeq.current.get(id) !== seq) return; // ya hay otro cambio en curso
+
+      setStatusSaving((s) => {
+        const next = { ...s };
+        delete next[id];
+        return next;
+      });
+
       if (error) {
-        setProspects(snapshot);
-        push("No se pudo cambiar el estado.", { tone: "error" });
+        // Se revierte solo esta ficha: un snapshot de toda la lista borraría
+        // lo que se haya escrito en otras mientras tanto.
+        setProspects((prev) =>
+          prev.map((p) => (p.id === id ? { ...p, status: before.status } : p))
+        );
+        push(`No se pudo cambiar el estado de ${before.name}.`, {
+          tone: "error",
+          action: { label: "Reintentar", run: () => setStatus(id, status) },
+        });
+        return;
       }
+      if (data) upsertLocal(data as Prospect);
     },
-    [supabase, push]
+    [supabase, push, upsertLocal]
   );
 
   const saveNotes = useCallback(
@@ -447,22 +561,40 @@ export default function Prospects({
     };
   }, [prospects]);
 
+  // Conteo por estado para el selector: se ve cuánto queda sin abrirlo.
+  const statusCounts = useMemo(() => {
+    const counts = Object.fromEntries(
+      PROSPECT_STATUSES.map((s) => [s, 0])
+    ) as Record<ProspectStatus, number>;
+    for (const p of prospects) counts[p.status] = (counts[p.status] ?? 0) + 1;
+    return counts;
+  }, [prospects]);
+
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
     return prospects
       .filter((p) => {
-        const okFilter =
-          filter === "all"
-            ? true
-            : filter === "pend"
-              ? p.status === "pendiente"
-              : p.priority === filter;
+        const okFilter = filter === "all" || p.priority === filter;
+        const okStatus = statusFilter === "all" || p.status === statusFilter;
         const okSegment = segment === "all" || p.segment === segment;
         const okQuery = !q || searchIndex(p).includes(q);
-        return okFilter && okSegment && okQuery;
+        return okFilter && okStatus && okSegment && okQuery;
       })
       .sort(byProspectOrder);
-  }, [prospects, filter, segment, query]);
+  }, [prospects, filter, statusFilter, segment, query]);
+
+  const filtersActive =
+    filter !== "all" ||
+    statusFilter !== "all" ||
+    segment !== "all" ||
+    query.trim() !== "";
+
+  function clearFilters() {
+    setFilter("all");
+    setStatusFilter("all");
+    setSegment("all");
+    setQuery("");
+  }
 
   function exportCSV() {
     const headers = [
@@ -545,6 +677,20 @@ export default function Prospects({
             ))}
           </div>
           <select
+            className={statusFilter !== "all" ? "on" : ""}
+            value={statusFilter}
+            aria-label="Filtrar por estado"
+            onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+          >
+            <option value="all">Todos los estados ({prospects.length})</option>
+            {PROSPECT_STATUSES.map((s) => (
+              <option key={s} value={s}>
+                {STATUS_META[s].label} ({statusCounts[s]})
+              </option>
+            ))}
+          </select>
+          <select
+            className={segment !== "all" ? "on" : ""}
             value={segment}
             aria-label="Filtrar por segmento"
             onChange={(e) => setSegment(e.target.value)}
@@ -556,6 +702,11 @@ export default function Prospects({
               </option>
             ))}
           </select>
+          {filtersActive && (
+            <button className="chip chip-clear" onClick={clearFilters}>
+              Limpiar filtros
+            </button>
+          )}
         </div>
       </AppHeader>
 
@@ -563,7 +714,14 @@ export default function Prospects({
         <PitchBlock />
 
         {loading ? (
-          <div className="loading">Cargando fichas…</div>
+          <div aria-busy="true" aria-label="Cargando fichas">
+            <p className="pros-count">
+              <span className="sk sk-line" style={{ width: 150 }} />
+            </p>
+            {[0, 1, 2].map((i) => (
+              <CardSkeleton key={i} />
+            ))}
+          </div>
         ) : loadError ? (
           <div className="loading">
             No se pudieron cargar las fichas.{" "}
@@ -586,7 +744,14 @@ export default function Prospects({
             </p>
             {visible.length === 0 ? (
               <div className="loading">
-                Ninguna ficha coincide con ese filtro.
+                Ninguna ficha coincide con ese filtro.{" "}
+                <button
+                  className="btn"
+                  style={{ marginLeft: 8 }}
+                  onClick={clearFilters}
+                >
+                  Limpiar filtros
+                </button>
               </div>
             ) : (
               visible.map((p) => (
@@ -595,6 +760,7 @@ export default function Prospects({
                   p={p}
                   scripts={scripts}
                   notesState={notesState[p.id] ?? "idle"}
+                  statusSaving={!!statusSaving[p.id]}
                   onEdit={() => openEdit(p)}
                   onCopy={(text, kind) => copyFor(p, text, kind)}
                   onStatus={(status) => setStatus(p.id, status)}

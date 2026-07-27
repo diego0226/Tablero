@@ -3,6 +3,8 @@
 import {
   MSG_LIMITS,
   PROSPECT_STATUSES,
+  STATUS_CLASS,
+  STATUS_META,
   fillTemplate,
   isClosed,
   telLink,
@@ -51,6 +53,7 @@ export default function ProspectCard({
   p,
   scripts,
   notesState,
+  statusSaving,
   onEdit,
   onCopy,
   onStatus,
@@ -59,6 +62,7 @@ export default function ProspectCard({
   p: Prospect;
   scripts: ProspectScript[];
   notesState: NotesState;
+  statusSaving: boolean;
   onEdit: () => void;
   // `initial` marca los mensajes de primer contacto: al copiarlos se ofrece
   // pasar la ficha a "contactado".
@@ -67,15 +71,25 @@ export default function ProspectCard({
   onNotes: (notes: string) => void;
 }) {
   const meta = [p.kind, p.zone, p.phone].filter(Boolean).join(" · ");
+  const signals = p.signals ?? [];
+  const unverified = p.unverified ?? [];
+  const links = p.links ?? [];
 
   return (
-    <article className={`pros-card ${isClosed(p.status) ? "closed" : ""}`}>
+    <article
+      className={`pros-card ${STATUS_CLASS[p.status] ?? ""} ${
+        isClosed(p.status) ? "closed" : ""
+      }`}
+    >
       <div className="pros-head">
         <div className="pros-ident">
           <h3 className="pros-name">{p.name}</h3>
           <p className="pros-meta">{meta}</p>
         </div>
         <div className="pros-badges">
+          <span className="pros-state" title="Estado de la ficha">
+            {STATUS_META[p.status]?.label ?? p.status}
+          </span>
           <span className="pros-score" title="Puntaje de calificación">
             {p.score}
           </span>
@@ -94,12 +108,12 @@ export default function ProspectCard({
         </div>
       </div>
 
-      {(p.signals.length > 0 || p.unverified.length > 0) && (
+      {(signals.length > 0 || unverified.length > 0) && (
         <ul className="pros-signals">
-          {p.signals.map((s, i) => (
+          {signals.map((s, i) => (
             <li key={`v${i}`}>{s}</li>
           ))}
-          {p.unverified.map((s, i) => (
+          {unverified.map((s, i) => (
             <li key={`q${i}`} className="q">
               Sin verificar: {s}
             </li>
@@ -193,7 +207,7 @@ export default function ProspectCard({
       </details>
 
       <div className="pros-foot">
-        {p.links.map((l) => (
+        {links.map((l) => (
           <a
             key={l.url}
             className="btn"
@@ -213,15 +227,20 @@ export default function ProspectCard({
           <span className="k">Estado</span>
           <select
             value={p.status}
+            disabled={statusSaving}
             aria-label={`Estado de ${p.name}`}
+            aria-busy={statusSaving}
             onChange={(e) => onStatus(e.target.value as ProspectStatus)}
           >
             {PROSPECT_STATUSES.map((s) => (
               <option key={s} value={s}>
-                {s}
+                {STATUS_META[s].label}
               </option>
             ))}
           </select>
+          <span className="pros-status-hint" aria-live="polite">
+            {statusSaving ? "Guardando…" : ""}
+          </span>
         </label>
       </div>
 

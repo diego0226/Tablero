@@ -76,6 +76,37 @@ type Toast = {
 
 type DropInfo = { status: Status; index: number };
 
+const EMPTY_TASK: Task = {
+  id: "", code: "", ep: "B", prio: "media", status: "todo", title: "",
+  description: "", assignee: "", subtasks: [], sort_order: 0,
+};
+
+// Deja siempre una tarea con todos los campos: lo que llegue vacío se completa
+// con la versión que ya estaba en pantalla (ver `upsertLocal`).
+function normalizeTask(row: Partial<Task>, prev?: Task): Task {
+  const base = prev ?? EMPTY_TASK;
+  const str = (v: unknown, f: string) => (typeof v === "string" ? v : f);
+  return {
+    id: str(row.id, base.id),
+    code: str(row.code, base.code),
+    ep: EPICS[row.ep as Epic] ? (row.ep as Epic) : base.ep,
+    prio: str(row.prio, base.prio) as Priority,
+    status: COLS.some((c) => c.id === row.status)
+      ? (row.status as Status)
+      : base.status,
+    title: str(row.title, base.title),
+    description: str(row.description, base.description),
+    assignee: str(row.assignee, base.assignee),
+    subtasks: Array.isArray(row.subtasks) ? row.subtasks : base.subtasks,
+    sort_order:
+      typeof row.sort_order === "number" && Number.isFinite(row.sort_order)
+        ? row.sort_order
+        : base.sort_order,
+    created_by: row.created_by ?? base.created_by,
+    updated_by: row.updated_by ?? base.updated_by,
+  };
+}
+
 export default function Board({ currentUserName }: { currentUserName: string }) {
   const supabase = useMemo(() => createClient(), []);
 
@@ -139,12 +170,17 @@ export default function Board({ currentUserName }: { currentUserName: string }) 
   } | null>(null);
 
   /* ---------------------------------------------------------------- datos */
-  const upsertLocal = useCallback((row: Task) => {
+  // Realtime no reenvía las columnas grandes (TOAST) que no cambiaron: al
+  // mover una tarjeta, `description` y `subtasks` llegan en `null`. Por eso
+  // la fila remota se fusiona sobre la local en vez de reemplazarla.
+  const upsertLocal = useCallback((row: Partial<Task>) => {
+    if (typeof row?.id !== "string" || !row.id) return;
+    const id = row.id;
     setTasks((prev) => {
-      const i = prev.findIndex((t) => t.id === row.id);
-      if (i === -1) return [...prev, row];
+      const i = prev.findIndex((t) => t.id === id);
+      if (i === -1) return [...prev, normalizeTask(row)];
       const next = prev.slice();
-      next[i] = row;
+      next[i] = normalizeTask(row, prev[i]);
       return next;
     });
   }, []);
@@ -159,7 +195,7 @@ export default function Board({ currentUserName }: { currentUserName: string }) 
       setLoadError(true);
     } else {
       setLoadError(false);
-      setTasks((data ?? []) as Task[]);
+      setTasks(((data ?? []) as Partial<Task>[]).map((t) => normalizeTask(t)));
     }
     setLoading(false);
   }, [supabase]);
@@ -172,12 +208,12 @@ export default function Board({ currentUserName }: { currentUserName: string }) 
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "tasks" },
-        (p) => upsertLocal(p.new as Task)
+        (p) => upsertLocal(p.new as Partial<Task>)
       )
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "tasks" },
-        (p) => upsertLocal(p.new as Task)
+        (p) => upsertLocal(p.new as Partial<Task>)
       )
       .on(
         "postgres_changes",
@@ -613,7 +649,37 @@ export default function Board({ currentUserName }: { currentUserName: string }) 
       </AppHeader>
 
       {loading ? (
-        <div className="loading">Cargando tablero…</div>
+        <div className="board" aria-busy="true" aria-label="Cargando tablero">
+          {COLS.map((col, ci) => (
+            <div key={col.id} className="col">
+              <div className="col-head">
+                <div className="col-name">
+                  <span className="dot" style={{ background: col.color }} />
+                  {col.name}
+                </div>
+                <span className="sk" style={{ width: 26, height: 18 }} />
+              </div>
+              <div className="col-list">
+                {Array.from({ length: 3 - (ci % 2) }, (_, i) => (
+                  <div key={i} className="card sk-card">
+                    <div className="sk-row">
+                      <span className="sk" style={{ width: 62, height: 16 }} />
+                      <span className="sk" style={{ width: 44, height: 12 }} />
+                    </div>
+                    <div className="sk-col" style={{ marginTop: 10 }}>
+                      <span className="sk sk-line w90" />
+                      <span className="sk sk-line w60" />
+                    </div>
+                    <div className="sk-row" style={{ marginTop: 12 }}>
+                      <span className="sk" style={{ width: 30, height: 12 }} />
+                      <span className="sk" style={{ width: 24, height: 24, borderRadius: "50%" }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       ) : loadError ? (
         <div className="loading">
           No se pudo cargar el tablero.{" "}
